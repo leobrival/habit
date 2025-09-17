@@ -1,5 +1,4 @@
 import { createClient } from '@supabase/supabase-js'
-import { createServerClient } from '@supabase/ssr'
 import { Database } from './types/database'
 
 if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
@@ -46,25 +45,3 @@ export const createServerSupabaseClient = () => {
     }
   )
 }
-
-// Nouveau: Client côté serveur avec contexte utilisateur (pour JWT auth)
-export const createUserContextSupabaseClient = (accessToken: string) => {
-  return createServerClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get() {
-          return undefined;
-        },
-        set() {},
-        remove() {},
-      },
-      global: {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      },
-    }
-  );
-};

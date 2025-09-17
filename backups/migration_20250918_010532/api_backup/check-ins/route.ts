@@ -1,25 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { withDualAuth } from '@/lib/auth-transition'
+import { withAuth } from '@/lib/auth-middleware'
 import { validateRequest, createCheckInSchema, checkInListQuerySchema, ValidationError } from '@/lib/validation'
 
 // GET /api/check-ins - List user's check-ins
-export const GET = withDualAuth(async (context) => {
+export const GET = withAuth(async (context) => {
   try {
-    const url = new URL(context.request?.url || '', `http://localhost:3000`)
+    const url = new URL(context.request.url || '', `http://localhost:3000`)
     const board_id = url.searchParams.get('board_id')
     const date_from = url.searchParams.get('date_from')
     const date_to = url.searchParams.get('date_to')
 
-    // 🎉 Plus besoin de .eq('user_id', context.user.id) - RLS le fait pour JWT !
     let query = context.supabase
       .from('check_ins')
       .select('*')
+      .eq('user_id', context.user.id)
       .order('date', { ascending: false })
-
-    // Pour les API keys, on garde le filtrage manuel
-    if ('apiKey' in context) {
-      query = query.eq('user_id', context.user.id)
-    }
 
     // Filter by board_id if provided
     if (board_id) {
@@ -56,9 +51,9 @@ export const GET = withDualAuth(async (context) => {
 })
 
 // POST /api/check-ins - Create new check-in
-export const POST = withDualAuth(async (context) => {
+export const POST = withAuth(async (context) => {
   try {
-    const body = await context.request!.json()
+    const body = await context.request.json()
     const checkInData = validateRequest(createCheckInSchema, body)
 
     const { data: newCheckIn, error } = await context.supabase

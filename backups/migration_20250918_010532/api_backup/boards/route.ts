@@ -1,24 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { withDualAuth } from '@/lib/auth-transition'
+import { withAuth } from '@/lib/auth-middleware'
 import { validateRequest, createBoardSchema, boardListQuerySchema, ValidationError } from '@/lib/validation'
 
 // GET /api/boards - List user's boards
-export const GET = withDualAuth(async (context) => {
+export const GET = withAuth(async (context) => {
   try {
-    const url = new URL(context.request?.url || '', `http://localhost:3000`)
+    const url = new URL(context.request.url || '', `http://localhost:3000`)
     const include_archived = url.searchParams.get('include_archived') === 'true'
 
-    // 🎉 Plus besoin de filtrer par user_id avec JWT - RLS le fait automatiquement !
-    // Pour API keys, le filtrage manuel est conservé dans withDualAuth
     let query = context.supabase
       .from('boards')
       .select('*')
+      .eq('user_id', context.user.id)
       .order('created_at', { ascending: false })
-
-    // Pour les API keys, on garde le filtrage manuel
-    if ('apiKey' in context) {
-      query = query.eq('user_id', context.user.id)
-    }
 
     // Filter out archived boards by default
     if (!include_archived) {
@@ -57,17 +51,15 @@ export const GET = withDualAuth(async (context) => {
 })
 
 // POST /api/boards - Create new board
-export const POST = withDualAuth(async (context) => {
+export const POST = withAuth(async (context) => {
   try {
-    const body = await context.request!.json()
+    const body = await context.request.json()
     const boardData = validateRequest(createBoardSchema, body)
 
-    // 🎉 user_id automatiquement défini par RLS avec auth.uid() pour JWT
-    // Pour API keys, on continue à définir explicitement user_id
     const { data: newBoard, error } = await context.supabase
       .from('boards')
       .insert({
-        user_id: context.user.id, // Explicite pour la clarté, mais RLS le vérifie pour JWT
+        user_id: context.user.id,
         ...boardData
       })
       .select()
