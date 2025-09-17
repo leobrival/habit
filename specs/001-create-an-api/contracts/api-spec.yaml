@@ -1,0 +1,538 @@
+openapi: 3.0.3
+info:
+  title: Habit Tracker API
+  description: API-first habit tracking system with visual progress grids
+  version: 1.0.0
+  contact:
+    name: API Support
+
+servers:
+  - url: https://your-app.vercel.app/api
+    description: Production server
+  - url: http://localhost:3000/api
+    description: Development server
+
+security:
+  - ApiKeyAuth: []
+
+paths:
+  # Authentication
+  /auth/magic-link:
+    post:
+      summary: Send magic link to email
+      description: Initiates magic link authentication flow
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: user@example.com
+              required:
+                - email
+      responses:
+        '200':
+          description: Magic link sent successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Magic link sent to your email"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /auth/verify:
+    post:
+      summary: Verify magic link token
+      description: Completes authentication and returns API key
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                token:
+                  type: string
+                  description: Magic link token from email
+              required:
+                - token
+      responses:
+        '200':
+          description: Authentication successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: '#/components/schemas/User'
+                  api_key:
+                    type: string
+                    description: Generated API key for future requests
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # API Key Management
+  /api-keys:
+    get:
+      summary: List user's API keys
+      description: Get all API keys for authenticated user
+      responses:
+        '200':
+          description: List of API keys
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ApiKey'
+
+    post:
+      summary: Generate new API key
+      description: Create a new API key with custom label
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                label:
+                  type: string
+                  example: "Raycast Extension"
+                  minLength: 1
+                  maxLength: 50
+              required:
+                - label
+      responses:
+        '201':
+          description: API key created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  api_key:
+                    type: string
+                    description: The actual API key (only shown once)
+                  metadata:
+                    $ref: '#/components/schemas/ApiKey'
+
+  /api-keys/{key_id}:
+    delete:
+      summary: Revoke API key
+      description: Revoke an existing API key
+      parameters:
+        - name: key_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: API key revoked successfully
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # Board Management
+  /boards:
+    get:
+      summary: List user's boards
+      description: Get all habit boards for authenticated user
+      parameters:
+        - name: include_archived
+          in: query
+          schema:
+            type: boolean
+            default: false
+          description: Include archived boards
+      responses:
+        '200':
+          description: List of boards
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Board'
+
+    post:
+      summary: Create new board
+      description: Create a new habit tracking board
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  example: "Morning Exercise"
+                  minLength: 1
+                  maxLength: 100
+                description:
+                  type: string
+                  maxLength: 500
+                color:
+                  type: string
+                  pattern: '^#[0-9A-Fa-f]{6}$'
+                  default: '#22c55e'
+                icon:
+                  type: string
+                  maxLength: 10
+              required:
+                - name
+      responses:
+        '201':
+          description: Board created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Board'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /boards/{board_id}:
+    get:
+      summary: Get board details
+      description: Get specific board with recent check-ins
+      parameters:
+        - name: board_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: days
+          in: query
+          schema:
+            type: integer
+            default: 30
+            minimum: 1
+            maximum: 365
+          description: Number of recent days to include
+      responses:
+        '200':
+          description: Board details with check-ins
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Board'
+                  - type: object
+                    properties:
+                      check_ins:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/CheckIn'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      summary: Update board
+      description: Update board details
+      parameters:
+        - name: board_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 100
+                description:
+                  type: string
+                  maxLength: 500
+                color:
+                  type: string
+                  pattern: '^#[0-9A-Fa-f]{6}$'
+                icon:
+                  type: string
+                  maxLength: 10
+      responses:
+        '200':
+          description: Board updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Board'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      summary: Archive board
+      description: Soft delete board (archive)
+      parameters:
+        - name: board_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Board archived successfully
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # Check-in Management
+  /boards/{board_id}/check-ins:
+    post:
+      summary: Create check-in
+      description: Mark a habit as completed for specific date
+      parameters:
+        - name: board_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                date:
+                  type: string
+                  format: date
+                  example: "2025-09-17"
+                completed:
+                  type: boolean
+                  example: true
+                notes:
+                  type: string
+                  maxLength: 1000
+              required:
+                - date
+                - completed
+      responses:
+        '201':
+          description: Check-in created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckIn'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          description: Check-in already exists for this date
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /check-ins/{check_in_id}:
+    put:
+      summary: Update check-in
+      description: Update existing check-in status or notes
+      parameters:
+        - name: check_in_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                completed:
+                  type: boolean
+                notes:
+                  type: string
+                  maxLength: 1000
+      responses:
+        '200':
+          description: Check-in updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckIn'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      summary: Delete check-in
+      description: Remove check-in record
+      parameters:
+        - name: check_in_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Check-in deleted successfully
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: Authorization
+      description: 'Use format: Bearer <api_key>'
+
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    ApiKey:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        label:
+          type: string
+          example: "Raycast Extension"
+        created_at:
+          type: string
+          format: date-time
+        last_used_at:
+          type: string
+          format: date-time
+          nullable: true
+        revoked_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    Board:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: "Morning Exercise"
+        description:
+          type: string
+          nullable: true
+        color:
+          type: string
+          example: "#22c55e"
+        icon:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        archived_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    CheckIn:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        board_id:
+          type: string
+          format: uuid
+        date:
+          type: string
+          format: date
+        completed:
+          type: boolean
+        notes:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error message
+        code:
+          type: string
+          description: Error code
+        details:
+          type: object
+          description: Additional error details
+
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "Validation failed"
+            code: "VALIDATION_ERROR"
+
+    Unauthorized:
+      description: Unauthorized access
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "Invalid API key"
+            code: "UNAUTHORIZED"
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "Resource not found"
+            code: "NOT_FOUND"

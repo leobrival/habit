@@ -1,0 +1,6 @@
+{
+  "/api/boards/route": "app/api/boards/route.js",
+  "/api/check-ins/route": "app/api/check-ins/route.js",
+  "/api/test-sdk/boards/route": "app/api/test-sdk/boards/route.js",
+  "/api/debug/rls-test/route": "app/api/debug/rls-test/route.js"
+}
