@@ -53,6 +53,11 @@ const clientEnvSchema = z.object({
 
 // Validate server environment
 function validateServerEnv() {
+  // Skip validation during Next.js build process
+  if (process.env.NEXT_PHASE === 'phase-production-build') {
+    return null;
+  }
+
   const result = serverEnvSchema.safeParse(process.env);
 
   if (!result.success) {
@@ -74,6 +79,11 @@ function validateServerEnv() {
 
 // Validate client environment
 function validateClientEnv() {
+  // Skip validation during Next.js build process
+  if (process.env.NEXT_PHASE === 'phase-production-build') {
+    return null;
+  }
+
   const clientEnv = {
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
     NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
@@ -84,15 +94,40 @@ function validateClientEnv() {
   if (!result.success) {
     console.error('❌ Invalid client environment variables:');
     console.error(result.error.flatten().fieldErrors);
+
+    // Don't throw during development - just warn
+    if (process.env.NODE_ENV === 'development') {
+      console.warn('⚠️  Development mode: continuing with invalid client env vars');
+      return null;
+    }
+
     throw new Error('Invalid client environment variables');
   }
 
   return result.data;
 }
 
-// Export validated environment variables
-export const env = validateServerEnv();
-export const clientEnv = validateClientEnv();
+// Lazy validation to avoid build-time failures
+let _env: ServerEnv | null = null;
+let _clientEnv: ClientEnv | null = null;
+
+export function getServerEnv(): ServerEnv | null {
+  if (_env === null) {
+    _env = validateServerEnv();
+  }
+  return _env;
+}
+
+export function getClientEnv(): ClientEnv | null {
+  if (_clientEnv === null) {
+    _clientEnv = validateClientEnv();
+  }
+  return _clientEnv;
+}
+
+// Legacy exports for backward compatibility
+export const env = getServerEnv();
+export const clientEnv = getClientEnv();
 
 // Type-safe environment access
 export type ServerEnv = z.infer<typeof serverEnvSchema>;
@@ -117,16 +152,31 @@ export function validateAuthEnvironment(): {
   anonKey: string;
   serviceRoleKey: string | null;
 } {
+  // Skip validation during Next.js build process
+  if (process.env.NEXT_PHASE === 'phase-production-build') {
+    return {
+      supabaseUrl: 'build-time-placeholder',
+      anonKey: 'build-time-placeholder',
+      serviceRoleKey: null,
+    };
+  }
+
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-  if (!supabaseUrl) {
-    throw new Error('NEXT_PUBLIC_SUPABASE_URL is required');
+  if (!supabaseUrl || supabaseUrl.includes('placeholder')) {
+    if (isProduction()) {
+      throw new Error('NEXT_PUBLIC_SUPABASE_URL is required');
+    }
+    console.warn('⚠️  NEXT_PUBLIC_SUPABASE_URL not configured');
   }
 
-  if (!anonKey) {
-    throw new Error('NEXT_PUBLIC_SUPABASE_ANON_KEY is required');
+  if (!anonKey || anonKey.includes('placeholder')) {
+    if (isProduction()) {
+      throw new Error('NEXT_PUBLIC_SUPABASE_ANON_KEY is required');
+    }
+    console.warn('⚠️  NEXT_PUBLIC_SUPABASE_ANON_KEY not configured');
   }
 
   // Service role key is optional in development but recommended
@@ -137,18 +187,20 @@ export function validateAuthEnvironment(): {
 
     console.warn('⚠️  SUPABASE_SERVICE_ROLE_KEY not configured - using anon key');
     return {
-      supabaseUrl,
-      anonKey,
+      supabaseUrl: supabaseUrl || 'placeholder',
+      anonKey: anonKey || 'placeholder',
       serviceRoleKey: null,
     };
   }
 
   return {
-    supabaseUrl,
-    anonKey,
+    supabaseUrl: supabaseUrl || 'placeholder',
+    anonKey: anonKey || 'placeholder',
     serviceRoleKey,
   };
 }
 
-// Export for use in middleware
-export const authEnv = validateAuthEnvironment();
+// Export for use in middleware - use getter to avoid build-time evaluation
+export function getAuthEnv() {
+  return validateAuthEnvironment();
+}
