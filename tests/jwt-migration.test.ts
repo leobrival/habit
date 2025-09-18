@@ -3,7 +3,7 @@
  * Tests the new JWT authentication system alongside the old API key system
  */
 
-import { describe, test, expect, beforeAll, afterAll, beforeEach } from '@jest/globals';
+// Jest globals are available automatically in Jest environment
 import { validateJWT } from '../lib/jwt-auth-middleware';
 import { createServerSupabaseClient } from '../lib/supabase';
 

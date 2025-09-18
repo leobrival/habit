@@ -1,0 +1,17 @@
+{
+  "name": "client-migration-tests",
+  "version": "1.0.0",
+  "description": "Testing suite for client JWT migration",
+  "scripts": {
+    "test": "node --test *.js",
+    "test:raycast": "node --test raycast-*.js",
+    "test:mcp": "node --test mcp-*.js",
+    "test:auth-flow": "node --test client-auth-flow.js",
+    "test:compatibility": "node --test api-compatibility.js"
+  },
+  "dependencies": {
+    "node-fetch": "^3.3.2",
+    "dotenv": "^16.3.1"
+  },
+  "type": "module"
+}

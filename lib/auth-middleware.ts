@@ -7,6 +7,7 @@ export interface AuthContext {
   user: AuthenticatedUser
   supabase: ReturnType<typeof createServerSupabaseClient>
   request: NextRequest
+  apiKey?: any // API key data for legacy auth
 }
 
 export class AuthError extends Error {
@@ -37,18 +38,9 @@ export async function validateApiKey(request: NextRequest): Promise<AuthContext>
   // Find the API key and associated user
   const { data: apiKeyData, error: apiKeyError } = await supabase
     .from('api_keys')
-    .select(`
-      id,
-      user_id,
-      label,
-      revoked_at,
-      users (
-        id,
-        email
-      )
-    `)
+    .select('id, user_id, label, revoked_at')
     .eq('key_hash', keyHash)
-.is('revoked_at', null)
+    .is('revoked_at', null)
     .single()
 
   if (apiKeyError || !apiKeyData) {
@@ -65,28 +57,25 @@ export async function validateApiKey(request: NextRequest): Promise<AuthContext>
     .update({ last_used_at: new Date().toISOString() })
     .eq('id', apiKeyData.id)
 
-  const user = apiKeyData.users as any
-  if (!user) {
-    throw new AuthError('Associated user not found', 401)
-  }
-
+  // API key authentication - user context from stored API key data
   return {
     user: {
-      id: user.id,
-      email: user.email
+      id: apiKeyData.user_id,
+      email: `user-${apiKeyData.user_id}@api-key.local` // Synthetic email for API key users
     },
+    apiKey: apiKeyData,
     supabase,
     request
   }
 }
 
 export function withAuth<T extends any[]>(
-  handler: (context: AuthContext, ...args: T) => Promise<Response>
+  handler: (context: AuthContext, request: NextRequest, ...args: T) => Promise<Response>
 ) {
   return async (request: NextRequest, ...args: T): Promise<Response> => {
     try {
       const context = await validateApiKey(request)
-      return await handler(context, ...args)
+      return await handler(context, request, ...args)
     } catch (error) {
       if (error instanceof AuthError) {
         return new Response(

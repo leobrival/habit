@@ -114,7 +114,7 @@ export async function validateJWT(
  * Higher-order function pour protéger les routes avec JWT
  */
 export function withJWTAuth<T extends any[]>(
-  handler: (context: JWTAuthContext, ...args: T) => Promise<Response>
+  handler: (context: JWTAuthContext, request: NextRequest, ...args: T) => Promise<Response>
 ) {
   return async (request: NextRequest, ...args: T): Promise<Response> => {
     try {
@@ -124,8 +124,8 @@ export function withJWTAuth<T extends any[]>(
       // Ajouter le request au contexte pour compatibilité
       context.request = request;
 
-      // Exécuter le handler avec le contexte
-      return await handler(context, ...args);
+      // Exécuter le handler avec le contexte et request
+      return await handler(context, request, ...args);
     } catch (error) {
       if (error instanceof AuthError) {
         return NextResponse.json(

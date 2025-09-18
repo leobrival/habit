@@ -3,9 +3,9 @@ import { withDualAuth } from '@/lib/auth-transition'
 import { validateRequest, createBoardSchema, boardListQuerySchema, ValidationError } from '@/lib/validation'
 
 // GET /api/boards - List user's boards
-export const GET = withDualAuth(async (context) => {
+export const GET = withDualAuth(async (context, request) => {
   try {
-    const url = new URL(context.request?.url || '', `http://localhost:3000`)
+    const url = new URL(request.url)
     const include_archived = url.searchParams.get('include_archived') === 'true'
 
     // 🎉 Plus besoin de filtrer par user_id avec JWT - RLS le fait automatiquement !
@@ -57,9 +57,9 @@ export const GET = withDualAuth(async (context) => {
 })
 
 // POST /api/boards - Create new board
-export const POST = withDualAuth(async (context) => {
+export const POST = withDualAuth(async (context, request) => {
   try {
-    const body = await context.request!.json()
+    const body = await request.json()
     const boardData = validateRequest(createBoardSchema, body)
 
     // 🎉 user_id automatiquement défini par RLS avec auth.uid() pour JWT

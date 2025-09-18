@@ -1,2 +1,0 @@
-2b072f39 feat: complete habit tracker API with authentication system
-f36c9382 Initial commit from Specify template

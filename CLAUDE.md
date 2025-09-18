@@ -140,7 +140,3 @@ When debugging:
 With each new feature, I want you to run `pnpm run typecheck`, `pnpm run lint`, `pnpm run test`, and `pnpm run build` to verify that the code is correct.
 
 I want no errors in the code (no matter how minor), run the code verification commands in a loop.
-
-## Commentaires
-
-I want you to add documentation comments to explain scripts that are not obvious.

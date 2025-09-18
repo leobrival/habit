@@ -25,11 +25,9 @@ export function withDualAuth<T extends any[]>(
     // Détecter le type d'authentification
     if (authHeader.includes("Bearer ey")) {
       // JWT token (commence par 'ey' comme tous les JWT)
-      console.log("🔑 Using JWT auth");
-      return withJWTAuth(handler)(request, ...args);
+      return withJWTAuth(handler as any)(request, ...args);
     } else if (authHeader.includes("Bearer ")) {
       // API key (ancien système)
-      console.log("🗝️  Using API key auth (legacy)");
       return withAuth(handler as any)(request, ...args);
     }
 

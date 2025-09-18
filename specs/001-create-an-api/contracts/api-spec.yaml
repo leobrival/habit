@@ -14,6 +14,7 @@ servers:
 
 security:
   - ApiKeyAuth: []
+  - JWTAuth: []
 
 paths:
   # Authentication
@@ -81,6 +82,156 @@ paths:
                     description: Generated API key for future requests
         '401':
           $ref: '#/components/responses/Unauthorized'
+
+  /auth/session:
+    get:
+      summary: Get current session
+      description: Get current user session information
+      security:
+        - JWTAuth: []
+      responses:
+        '200':
+          description: Session information
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: '#/components/schemas/User'
+                  session:
+                    type: object
+                    properties:
+                      access_token:
+                        type: string
+                      refresh_token:
+                        type: string
+                      expires_at:
+                        type: integer
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    post:
+      summary: Create session from JWT
+      description: Create a session using JWT tokens from magic link
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                access_token:
+                  type: string
+                  description: JWT access token from Supabase
+                refresh_token:
+                  type: string
+                  description: JWT refresh token from Supabase
+              required:
+                - access_token
+                - refresh_token
+      responses:
+        '200':
+          description: Session created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: '#/components/schemas/User'
+                  session:
+                    type: object
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/refresh:
+    post:
+      summary: Refresh JWT tokens
+      description: Refresh expired JWT access token using refresh token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                refresh_token:
+                  type: string
+                  description: Valid refresh token
+              required:
+                - refresh_token
+      responses:
+        '200':
+          description: Tokens refreshed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access_token:
+                    type: string
+                  refresh_token:
+                    type: string
+                  expires_at:
+                    type: integer
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          description: Refresh token invalid or expired
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  code:
+                    type: string
+                    example: "REFRESH_FAILED"
+
+  /health:
+    get:
+      summary: Health check
+      description: Get system health status and metrics
+      security: []
+      parameters:
+        - name: metrics
+          in: query
+          schema:
+            type: boolean
+            default: false
+          description: Include detailed metrics
+      responses:
+        '200':
+          description: System health status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [healthy, degraded, unhealthy]
+                  timestamp:
+                    type: string
+                    format: date-time
+                  version:
+                    type: string
+                  database:
+                    type: object
+                    properties:
+                      status:
+                        type: string
+                      response_time:
+                        type: number
+                  metrics:
+                    type: object
+                    description: Detailed metrics (when requested)
 
   # API Key Management
   /api-keys:
@@ -401,6 +552,12 @@ components:
       in: header
       name: Authorization
       description: 'Use format: Bearer <api_key>'
+
+    JWTAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: 'JWT token from Supabase authentication'
 
   schemas:
     User:

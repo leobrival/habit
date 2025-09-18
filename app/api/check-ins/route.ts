@@ -3,9 +3,9 @@ import { withDualAuth } from '@/lib/auth-transition'
 import { validateRequest, createCheckInSchema, checkInListQuerySchema, ValidationError } from '@/lib/validation'
 
 // GET /api/check-ins - List user's check-ins
-export const GET = withDualAuth(async (context) => {
+export const GET = withDualAuth(async (context, request) => {
   try {
-    const url = new URL(context.request?.url || '', `http://localhost:3000`)
+    const url = new URL(request.url)
     const board_id = url.searchParams.get('board_id')
     const date_from = url.searchParams.get('date_from')
     const date_to = url.searchParams.get('date_to')
@@ -56,9 +56,9 @@ export const GET = withDualAuth(async (context) => {
 })
 
 // POST /api/check-ins - Create new check-in
-export const POST = withDualAuth(async (context) => {
+export const POST = withDualAuth(async (context, request) => {
   try {
-    const body = await context.request!.json()
+    const body = await request.json()
     const checkInData = validateRequest(createCheckInSchema, body)
 
     const { data: newCheckIn, error } = await context.supabase
