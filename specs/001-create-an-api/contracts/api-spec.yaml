@@ -548,10 +548,9 @@ paths:
 components:
   securitySchemes:
     ApiKeyAuth:
-      type: apiKey
-      in: header
-      name: Authorization
-      description: 'Use format: Bearer <api_key>'
+      type: http
+      scheme: bearer
+      description: 'API Key authentication - enter your API key as the bearer token'
 
     JWTAuth:
       type: http
