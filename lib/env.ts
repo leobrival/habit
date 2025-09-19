@@ -53,8 +53,10 @@ const clientEnvSchema = z.object({
 
 // Validate server environment
 function validateServerEnv() {
-  // Skip validation during Next.js build process
-  if (process.env.NEXT_PHASE === 'phase-production-build') {
+  // Skip validation during Next.js build process or when building for production
+  if (process.env.NEXT_PHASE === 'phase-production-build' ||
+      process.env.VERCEL_ENV === 'production' ||
+      process.env.NODE_ENV === 'production' && !process.env.VERCEL_URL) {
     return null;
   }
 
@@ -79,8 +81,10 @@ function validateServerEnv() {
 
 // Validate client environment
 function validateClientEnv() {
-  // Skip validation during Next.js build process
-  if (process.env.NEXT_PHASE === 'phase-production-build') {
+  // Skip validation during Next.js build process or when building for production
+  if (process.env.NEXT_PHASE === 'phase-production-build' ||
+      process.env.VERCEL_ENV === 'production' ||
+      process.env.NODE_ENV === 'production' && !process.env.VERCEL_URL) {
     return null;
   }
 
@@ -152,8 +156,10 @@ export function validateAuthEnvironment(): {
   anonKey: string;
   serviceRoleKey: string | null;
 } {
-  // Skip validation during Next.js build process
-  if (process.env.NEXT_PHASE === 'phase-production-build') {
+  // Skip validation during Next.js build process or when building for production
+  if (process.env.NEXT_PHASE === 'phase-production-build' ||
+      process.env.VERCEL_ENV === 'production' ||
+      process.env.NODE_ENV === 'production' && !process.env.VERCEL_URL) {
     return {
       supabaseUrl: 'build-time-placeholder',
       anonKey: 'build-time-placeholder',
